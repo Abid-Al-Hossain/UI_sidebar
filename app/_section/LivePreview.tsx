@@ -4,30 +4,80 @@ import type { CSSProperties } from "react";
 import type { SidebarState } from "../types";
 
 function box(state: SidebarState): CSSProperties {
-  return { width: state.width, minHeight: state.height, padding: state.padding, margin: state.margin, gap: state.gap, borderRadius: state.radius, border: `${state.borderWidth}px solid ${state.border}`, boxShadow: `0 ${Math.round(state.shadow / 3)}px ${state.shadow}px rgba(0,0,0,.28)`, background: state.background, color: state.foreground, fontFamily: state.fontFamily };
+  const collapsed = state.collapsed || state.previewState === "collapsed";
+  return {
+    width: collapsed ? state.railWidth : state.width,
+    minHeight: state.height,
+    padding: collapsed ? Math.max(10, Math.round(state.padding * 0.55)) : state.padding,
+    margin: state.margin,
+    gap: state.gap,
+    borderRadius: state.radius,
+    border: `${state.borderWidth}px solid ${state.border}`,
+    boxShadow: `0 ${Math.round(state.shadow / 3)}px ${state.shadow}px rgba(0,0,0,.28)`,
+    background: state.background,
+    color: state.foreground,
+    fontFamily: state.fontFamily,
+    marginLeft: state.side === "right" ? "auto" : state.margin,
+    transition: state.motion ? "all 180ms ease" : undefined,
+  };
 }
 
 export default function LivePreview({ state }: { state: SidebarState }) {
-  const model = state as Record<string, unknown>;
-  const numberValue = (key: string, fallback: number) => typeof model[key] === "number" ? model[key] : fallback;
-  const stringValue = (key: string, fallback: string) => typeof model[key] === "string" ? model[key] : fallback;
-  const boolValue = (key: string, fallback = false) => typeof model[key] === "boolean" ? model[key] : fallback;
-  const count = numberValue("itemCount", numberValue("navCount", numberValue("linkCount", numberValue("columnCount", 4))));
-  const items = Array.from({ length: count }, (_, index) => index + 1);
+  const collapsed = state.collapsed || state.previewState === "collapsed";
+  const groupCount = Math.max(1, state.nestedGroups);
+  const items = Array.from({ length: state.itemCount }, (_, index) => `Item ${index + 1}`);
+  const groups = Array.from({ length: groupCount }, (_, index) => ({
+    title: `Group ${index + 1}`,
+    items: items.filter((_, itemIndex) => itemIndex % groupCount === index),
+  }));
   const style = box(state);
-  if (stringValue("role", "") === "separator" || "orientation" in model) {
-    const orientation = stringValue("orientation", "horizontal") as "horizontal" | "vertical";
-    const length = numberValue("length", state.width);
-    const thickness = numberValue("thickness", state.borderWidth || 1);
-    return <div role={boolValue("decorative") ? "presentation" : "separator"} aria-orientation={orientation} style={{ ...style, minHeight: orientation === "vertical" ? length : thickness, width: orientation === "vertical" ? thickness : length, padding: 0, background: state.accent }} />;
-  }
-  if ("axis" in model) {
-    const axis = stringValue("axis", "block");
-    const size = numberValue("size", 72);
-    const thickness = numberValue("thickness", 1);
-    return <div aria-hidden={boolValue("decorative")} role={boolValue("decorative") ? "presentation" : "separator"} style={{ ...style, minHeight: axis === "inline" ? thickness : size, width: axis === "block" ? "100%" : size, display: "grid", placeItems: "center" }}>{boolValue("debugVisible") ? stringValue("token", "space") : ""}</div>;
-  }
-  const gridColumns = "columns" in model ? `repeat(${numberValue("columns", 3)}, minmax(0, 1fr))` : undefined;
-  const isFlex = "direction" in model;
-  return <section id={state.id} role={state.role === "presentation" ? undefined : state.role} aria-label={state.landmarkLabel} tabIndex={state.tabIndex} style={style} className="grid content-center"><h3 style={{ fontSize: state.titleSize, fontWeight: state.fontWeight }}>{state.title}</h3><p style={{ color: state.muted, fontSize: state.bodySize }}>{state.description}</p><div className="grid gap-3" style={{ gridTemplateColumns: gridColumns, display: isFlex ? "flex" : undefined, flexDirection: isFlex ? stringValue("direction", "row") as CSSProperties["flexDirection"] : undefined, flexWrap: "wrap" in model ? stringValue("wrap", "wrap") as CSSProperties["flexWrap"] : undefined, justifyContent: "justify" in model ? stringValue("justify", "center") as CSSProperties["justifyContent"] : undefined, alignItems: "align" in model ? stringValue("align", "stretch") as CSSProperties["alignItems"] : undefined }}>{items.map((item) => <div key={item} className="rounded-xl border p-3" style={{ borderColor: state.border, background: "rgba(255,255,255,.06)" }}>Item {item}</div>)}</div></section>;
+
+  return (
+    <aside id={state.id} aria-label={state.landmarkLabel} tabIndex={state.tabIndex} style={style}>
+      <div className="flex items-center justify-between" style={{ gap: state.gap }}>
+        <a href="#" className="font-semibold" style={{ color: state.foreground, fontSize: collapsed ? state.bodySize : state.titleSize, fontWeight: state.fontWeight }}>
+          {collapsed ? state.title.slice(0, 1) : state.title}
+        </a>
+        <button type="button" aria-expanded={!collapsed} className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: state.border, color: state.muted }}>
+          {collapsed ? "Open" : "Collapse"}
+        </button>
+      </div>
+      {!collapsed && <p style={{ color: state.muted, fontSize: state.bodySize, marginTop: Math.max(8, state.gap / 2) }}>{state.description}</p>}
+      <nav aria-label={`${state.landmarkLabel} groups`} className="grid" style={{ gap: state.gap, marginTop: state.gap }}>
+        {groups.map((group, groupIndex) => (
+          <section key={group.title} aria-labelledby={`${state.id}-group-${groupIndex}`} className="grid" style={{ gap: Math.max(6, state.gap / 2) }}>
+            <button
+              id={`${state.id}-group-${groupIndex}`}
+              type="button"
+              aria-expanded={groupIndex === 0 || state.previewState !== "overflow"}
+              className="rounded-xl px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em]"
+              style={{ color: state.muted, background: "rgba(255,255,255,.04)" }}
+            >
+              {collapsed ? groupIndex + 1 : group.title}
+            </button>
+            {(groupIndex === 0 || state.previewState !== "overflow") && group.items.map((item, itemIndex) => {
+              const active = groupIndex === 0 && itemIndex === 0;
+              return (
+                <a
+                  key={item}
+                  href="#"
+                  aria-current={active ? "page" : undefined}
+                  className="rounded-xl px-3 py-2 text-sm font-medium"
+                  style={{
+                    color: active || state.previewState === "hover" ? state.foreground : state.muted,
+                    background: active ? state.accent : state.previewState === "hover" && itemIndex === 0 ? "rgba(255,255,255,.12)" : "transparent",
+                    outline: state.previewState === "focus" && active ? `2px solid ${state.accent}` : undefined,
+                    outlineOffset: 3,
+                    textAlign: collapsed ? "center" : "left",
+                  }}
+                >
+                  {collapsed ? item.replace("Item ", "") : item}
+                </a>
+              );
+            })}
+          </section>
+        ))}
+      </nav>
+    </aside>
+  );
 }
