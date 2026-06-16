@@ -7,6 +7,8 @@ import type { SidebarState } from "../types";
 type Props = { state: SidebarState; update: <K extends keyof SidebarState>(key: K, value: SidebarState[K]) => void };
 
 export default function BasicsSection({ state, update }: Props) {
-  return <SectionCard title="Basics" subtitle="Basics controls for native layout/page-structure generation."><Input label="Title" value={state.title} onChange={(value) => update("title", value)} />
-<Input label="Description" value={state.description} onChange={(value) => update("description", value)} /></SectionCard>;
+  return <SectionCard title="Basics" subtitle="Basics controls for native layout/page-structure generation.">
+      <div className="space-y-4"><Input label="Title" value={state.title} onChange={(value) => update("title", value)} />
+<Input label="Description" value={state.description} onChange={(value) => update("description", value)} /></div>
+    </SectionCard>;
 }
