@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import type { SidebarState } from "../types";
 import { SYSTEM_FONTS } from "@/components/shared/typography/fontConstants";
 
@@ -55,6 +55,7 @@ export default function LivePreview({ state }: { state: SidebarState }) {
     items: items.filter((_, itemIndex) => itemIndex % groupCount === index),
   }));
   const style = box(state);
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
   return (
     <aside id={state.id} aria-label={state.landmarkLabel} tabIndex={state.tabIndex} style={style}>
@@ -62,40 +63,61 @@ export default function LivePreview({ state }: { state: SidebarState }) {
         <a href="#" className="font-semibold" style={{ color: state.foreground, fontSize: collapsed ? state.bodySize : state.titleSize, fontWeight: state.fontWeight }}>
           {collapsed ? state.title.slice(0, 1) : state.title}
         </a>
-        <button type="button" aria-expanded={!collapsed} className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: state.border, color: state.muted }}>
+        <button type="button" aria-expanded={!collapsed} className="rounded-full border px-2 py-1 text-xs" style={{ borderColor: state.border, color: state.collapseIconColor }}>
           {collapsed ? "Open" : "Collapse"}
         </button>
       </div>
       {!collapsed && <p style={{ color: state.muted, fontSize: state.bodySize, marginTop: Math.max(8, state.gap / 2) }}>{state.description}</p>}
-      <nav aria-label={`${state.landmarkLabel} groups`} className="grid" style={{ gap: state.gap, marginTop: state.gap }}>
+      <nav
+        aria-label={`${state.landmarkLabel} groups`}
+        className="grid overflow-y-auto"
+        style={{
+          gap: state.gap,
+          marginTop: state.gap,
+          maxHeight: "100%",
+          scrollbarColor: `${state.scrollbarThumb} ${state.scrollbarBg}`,
+        }}
+      >
         {groups.map((group, groupIndex) => (
           <section key={group.title} aria-labelledby={`${state.id}-group-${groupIndex}`} className="grid" style={{ gap: Math.max(6, state.gap / 2) }}>
+            {groupIndex > 0 && <div aria-hidden="true" style={{ height: 1, background: state.groupDividerColor, marginBottom: Math.max(6, state.gap / 2) }} />}
             <button
               id={`${state.id}-group-${groupIndex}`}
               type="button"
               aria-expanded={groupIndex === 0 || state.previewState !== "overflow"}
               className="rounded-xl px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em]"
-              style={{ color: state.muted, background: "rgba(255,255,255,.04)" }}
+              style={{ color: state.groupHeaderColor, background: "rgba(255,255,255,.04)" }}
             >
               {collapsed ? groupIndex + 1 : group.title}
             </button>
             {(groupIndex === 0 || state.previewState !== "overflow") && group.items.map((item, itemIndex) => {
               const active = groupIndex === 0 && itemIndex === 0;
+              const key = `${groupIndex}-${itemIndex}`;
+              const isHovered = hoveredKey === key || (state.previewState === "hover" && groupIndex === 0 && itemIndex === 0);
+              const showBadge = groupIndex === 0 && itemIndex === 1;
               return (
                 <a
                   key={item}
                   href="#"
                   aria-current={active ? "page" : undefined}
-                  className="rounded-xl px-3 py-2 text-sm font-medium"
+                  className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium"
                   style={{
-                    color: active || state.previewState === "hover" ? state.foreground : state.muted,
-                    background: active ? state.accent : state.previewState === "hover" && itemIndex === 0 ? "rgba(255,255,255,.12)" : "transparent",
+                    color: active ? state.activeItemText : isHovered ? state.hoverItemText : state.muted,
+                    background: active ? state.activeItemBg : isHovered ? state.hoverItemBg : "transparent",
+                    border: `1px solid ${active ? state.activeItemBorder : "transparent"}`,
                     outline: state.previewState === "focus" && active ? `2px solid ${state.accent}` : undefined,
                     outlineOffset: 3,
                     textAlign: collapsed ? "center" : "left",
                   }}
+                  onMouseEnter={() => setHoveredKey(key)}
+                  onMouseLeave={() => setHoveredKey((current) => (current === key ? null : current))}
                 >
-                  {collapsed ? item.replace("Item ", "") : item}
+                  <span>{collapsed ? item.replace("Item ", "") : item}</span>
+                  {!collapsed && showBadge && (
+                    <span aria-hidden="true" style={{ minWidth: 18, height: 18, padding: "0 5px", display: "grid", placeItems: "center", borderRadius: 999, fontSize: 10, fontWeight: 700, background: state.badgeCountBg, color: state.badgeCountText }}>
+                      3
+                    </span>
+                  )}
                 </a>
               );
             })}

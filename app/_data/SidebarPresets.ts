@@ -65,7 +65,19 @@ export const DEFAULT_SIDEBAR_STATE: SidebarState = {
   "railWidth": 76,
   "collapsed": false,
   "nestedGroups": 3,
-  "itemCount": 8
+  "itemCount": 8,
+  "activeItemBg": "#38bdf8",
+  "activeItemText": "#0f172a",
+  "activeItemBorder": "transparent",
+  "hoverItemBg": "rgba(255,255,255,0.12)",
+  "hoverItemText": "#f8fafc",
+  "collapseIconColor": "#94a3b8",
+  "groupHeaderColor": "#94a3b8",
+  "groupDividerColor": "#1e293b",
+  "badgeCountBg": "#ef4444",
+  "badgeCountText": "#ffffff",
+  "scrollbarBg": "transparent",
+  "scrollbarThumb": "#334155"
 };
 
 export const SIDEBAR_PRESETS: StudioPreset[] = [

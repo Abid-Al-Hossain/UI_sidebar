@@ -71,6 +71,18 @@ export type SidebarState = {
   collapsed: boolean;
   nestedGroups: number;
   itemCount: number;
+  activeItemBg: string;
+  activeItemText: string;
+  activeItemBorder: string;
+  hoverItemBg: string;
+  hoverItemText: string;
+  collapseIconColor: string;
+  groupHeaderColor: string;
+  groupDividerColor: string;
+  badgeCountBg: string;
+  badgeCountText: string;
+  scrollbarBg: string;
+  scrollbarThumb: string;
 };
 
 export type StudioPreset = { id: string; family: string; archetype: string; variant: string; size: string; tags: string[]; state: Partial<SidebarState> & Record<string, unknown> };
